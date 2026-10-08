@@ -47,7 +47,7 @@ flowchart TD
 | 坐标变换与数据类型 | [geometry.py](../agentnav/abot/geometry.py)、[types.py](../agentnav/abot/types.py) | 像素→局部→世界、状态及测量结构 |
 | 可视化 | [visualize.py](../agentnav/abot/visualize.py) | 根据前视帧和日志生成任务视频 |
 
-当前执行器是本地 Python 运动实现，未调用 Nav2；VLM 工具通过本地 function calling 注册表执行，未经过 MCP。
+未调用 Nav2；未经过 MCP。
 
 ## 3. 实验的原始输入、服务与配置
 
@@ -57,7 +57,7 @@ flowchart TD
 2. 场景和评测地图：渲染服务产生相机图像；占据地图由Evaluator检查碰撞，不传给 VLM 或 Agent 的避障器。
 3. 模型服务：本机 vLLM 提供 `qwen3-vl-4b-instruct`；本地权重提供 Metric3D，当前还启用 UniDepth 近场复核。
 
-启动命令分别在三个终端运行：
+启动命令由三部分组成：
 
 ```bash
 # 终端 1：VLM，默认 GPU 1、端口 8000
