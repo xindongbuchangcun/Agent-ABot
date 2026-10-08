@@ -119,7 +119,7 @@ while cur_step < max_steps:
 
 完整 `PoiGoalObservation` 含有当前 RGB、位姿、POI 名称以及评测器掌握的真实目标距离等字段。不过 `to_agent_safe_observation()` **只把** POI 名称、当前 front RGB、环境步数、模式、简短记忆、转移原因和扫描状态交给 VLM。位姿可供 Python 执行器变换坐标；真实距离用于 Python 的终止门槛；占据地图不参与 Agent 决策。
 
-## 5. 状态机：什么时候调用 VLM，什么时候由 Python 运动
+## 5. 状态机：什么时候调用 VLM，什么时候 Python 运动
 
 Agent 的主要模式定义在 `types.py`：
 
@@ -141,7 +141,7 @@ Agent 的主要模式定义在 `types.py`：
 
 正常规划可用的核心工具是：
 
-| 工具 | VLM 提供什么 | 本地 Python 做什么 |
+| 工具 | VLM 提供 | 本地 Python  |
 | --- | --- | --- |
 | `QUERY_DEPTH` | 当前帧的 1～8 个 `(u,v,reason)` | 计算深度，返回逐个 `PixelMeasurement` |
 | `SET_NAVIGATION_GOAL` | 一个已返回的 `candidate_id`、目标名称和导航理由 | 复核候选和语义绑定，创建导航任务 |
