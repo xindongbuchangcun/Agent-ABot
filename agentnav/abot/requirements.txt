@@ -1,0 +1,9 @@
+json-repair
+loguru
+openai
+platformdirs
+rich
+tiktoken
+timm
+Pillow
+opencv-python-headless

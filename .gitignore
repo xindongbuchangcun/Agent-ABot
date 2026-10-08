@@ -1,0 +1,27 @@
+# Local configuration and credentials
+.env
+.env.*
+agentnav/config/nanobot_config.json
+.claude/
+
+# Experiments, runtime data, and generated files
+outputs/
+logs/
+agentnav/abot/workspace/runtime_images/
+agentnav/abot/workspace/memory/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+node_modules/
+*.log
+*.ckpt
+*.pth
+*.bin
+*.safetensors
+*.mp4
+*.mov

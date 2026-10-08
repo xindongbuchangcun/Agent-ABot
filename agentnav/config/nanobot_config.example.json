@@ -1,0 +1,46 @@
+{
+  "agents": {
+    "defaults": {
+      "model": "anthropic/claude-sonnet-4-6",
+      "provider": "anthropic",
+      "maxToolIterations": 40,
+      "contextWindowTokens": 32768
+    }
+  },
+  "providers": {
+    "anthropic": {
+      "apiKey": ""
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "token": "",
+      "allowFrom": []
+    }
+  },
+  "tools": {
+    "mcpServers": {
+      "agentnav": {
+        "command": "python",
+        "args": [
+          "-m",
+          "agentnav.bridge_core.server"
+        ],
+        "env": {
+          "S1_MODE": "${S1_MODE}",
+          "S1_CHECKPOINT": "/path/to/checkpoint",
+          "TELEGRAM_BOT_TOKEN": "",
+          "MY_TELEGRAM_ID": ""
+        },
+        "_comment_topics": "Topic names default to Wheeltec layout. Override via TOPIC_COLOR_IMAGE / TOPIC_DEPTH_IMAGE / TOPIC_ODOM env vars if needed.",
+        "_comment_intrinsics": "Camera intrinsics are auto-read from /camera/color/camera_info. Override via CAMERA_FX/FY/CX/CY only if needed.",
+        "toolTimeout": 600
+      }
+    }
+  },
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 18790
+  }
+}

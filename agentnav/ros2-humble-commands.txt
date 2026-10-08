@@ -1,0 +1,218 @@
+NFS mount:
+sudo mount -t nfs 192.168.0.100:/home/wheeltec/wheeltec_ros2 /mnt
+NFS unmount:
+sudo umount -t nfs 192.168.0.100:/home/wheeltec/wheeltec_ros2 /mnt
+
+
+1. Start robot chassis
+ros2 launch turn_on_wheeltec_robot turn_on_wheeltec_robot.launch.py
+
+2. Start chassis control
+ros2 launch turn_on_wheeltec_robot turn_on_wheeltec_robot.launch.py
+
+3. Start camera
+ros2 launch turn_on_wheeltec_robot wheeltec_camera.launch.py
+
+4. Start lidar
+ros2 launch turn_on_wheeltec_robot wheeltec_lidar.launch.py
+
+Start lidar, camera and chassis:
+ros2 launch turn_on_wheeltec_robot wheeltec_sensors.launch.py
+
+5. Start keyboard control
+ros2 run wheeltec_robot_keyboard wheeltec_keyboard
+
+6. Simple follow functions
+① Lidar following
+ros2 launch simple_follower_ros2 laser_follower.launch.py
+
+② Visual line following
+ros2 launch simple_follower_ros2 line_follower.launch.py
+
+③ Visual tracking
+ros2 launch simple_follower_ros2 visual_follower.launch.py
+
+③ KCF following
+ros2 launch wheeltec_robot_kcf wheeltec_robot_kcf.launch.py
+
+7. 2D mapping
+① Map with gmapping
+ros2 launch slam_gmapping slam_gmapping.launch.py
+
+② Map with slam_toolbox
+ros2 launch wheeltec_slam_toolbox online_async_launch.py
+
+③ Map with cartographer
+ros2 launch wheeltec_cartographer cartographer.launch.py
+
+Save map
+ros2 launch wheeltec_nav2 save_map.launch.py
+
+8. 2D navigation [includes multi-point navigation]
+ros2 launch wheeltec_nav2 wheeltec_nav2.launch.py
+
+10. RTAB-MAP visual + lidar mapping
+ros2 launch wheeltec_robot_rtab wheeltec_slam_rtab.launch.py
+Save map
+ros2 launch wheeltec_nav2 save_map.launch.py
+
+11. RTAB-MAP visual + lidar navigation
+step1:
+ros2 launch wheeltec_robot_rtab rtabmap_localization.launch.py
+step2:
+ros2 launch wheeltec_robot_rtab wheeltec_nav2_rtab.launch.py
+
+12. RTAB-MAP visual-only mapping
+ros2 launch wheeltec_robot_rtab wheeltec_slam_rtab_pure3d.launch.py
+Save map
+ros2 launch wheeltec_nav2 save_map.launch.py
+
+13. RTAB-MAP visual-only navigation
+step1:
+ros2 launch wheeltec_robot_rtab rtabmap_localization_pure3d.launch.py
+step2:
+ros2 launch wheeltec_robot_rtab wheeltec_nav2_rtab_pure3d.launch.py
+
+14. ORB Slam
+ros2 launch orb_slam2_ros orb_slam2_Astra_rgbd_launch.py
+
+15. RRT autonomous exploration mapping [publishes four waypoints clockwise/counterclockwise, last point published in known map]
+step1:
+ros2 launch wheeltec_slam_toolbox online_async_launch.py
+step2:
+ros2 launch wheeltec_robot_rrt wheeltec_rrt_slam.launch.py
+
+16. Path tracking [see function manual for detailed operation]
+Design and save a path:
+step1: Run navigation
+ros2 launch wheeltec_nav2 wheeltec_nav2.launch.py
+step2: Save path
+ros2 launch wheeltec_path_follow save_path.launch.py
+step3: Use keyboard control to design path
+ros2 run wheeltec_robot_keyboard wheeltec_keyboard
+Start path tracking:
+step1: Run navigation
+ros2 launch wheeltec_nav2 wheeltec_nav2.launch.py
+step2: Start path tracking
+ros2 launch wheeltec_path_follow follow_path.launch.py
+
+17. Multi-robot formation [see function manual for detailed operation]
+step1: Run multi-robot formation navigation on the leader robot
+ros2 launch wheeltec_multi navigation.launch.py
+step2: Run formation program on each follower robot
+ros2 launch wheeltec_multi wheeltec_slave.launch.py
+step3: Open keyboard control node on the leader robot to control movement
+ros2 run wheeltec_robot_keyboard wheeltec_keyboard
+
+18. ROS2 QT functions
+ros2 launch qt_ros_test qt_ros_test.launch.py
+
+19. TTS text-to-audio
+(Text content to convert is in tts_make.launch.py)
+ros2 launch tts tts_make.launch.py
+
+20. Voice control
+step1: Start microphone array init node
+ros2 launch wheeltec_mic_ros2 mic_init.launch.py
+step2: Start robot function init node
+ros2 launch wheeltec_mic_ros2 base.launch.py
+
+Deepseek voice control
+step1: Start aiui function
+ros2 launch wheeltec_aiui aiui_start.launch.py
+step2: Start ollama function init node
+ros2 launch ollama_ros_chat ollama_ros_chat.launch.py
+
+
+21. Skeleton recognition
+① Pose control (pose control section, multi-person directional control section, RGB memory person section commands)
+ros2 launch bodyreader bodyinteraction.launch.py
+② Human skeleton following (human tracking section)
+ros2 launch bodyreader bodyfollow.launch.py
+③ Combined pose control and following — starts in pose control mode by default, cross arms in front of chest to switch modes
+ros2 launch bodyreader final.launch.py
+
+22. Web browser camera display
+step1: Start camera
+ros2 launch turn_on_wheeltec_robot wheeltec_camera.launch.py
+step2:
+ros2 run web_video_server web_video_server
+step3: Enter address in browser to view live video stream
+http://192.168.0.100:8080/
+
+23. USB gamepad control
+ros2 launch wheeltec_joy wheeltec_joy.launch.py
+
+24. Auto recharge
+Edit robot model and battery capacity:
+Open auto_recharge_ros2/robot_info.yaml and select the robot model and battery capacity matching your robot
+
+Use auto recharge:
+① First map and save
+ros2 launch slam_gmapping slam_gmapping.launch.py
+ros2 launch wheeltec_nav2 save_map.launch.py
+② Start navigation:
+ros2 launch wheeltec_nav2 wheeltec_nav2.launch.py
+③ Start auto recharge:
+ros2 run auto_recharge_ros2 auto_recharge
+In rviz, use topic "charger_position_update" to mark the charging dock position. Follow terminal prompts to proceed.
+
+25. AR tag recognition and following
+① AR tag recognition
+ros2 launch aruco_ros aruco_recognize.launch.py
+② AR tag following
+ros2 launch simple_follower_ros2 aruco_follower.launch.py
+
+Other common commands
+
+1. Build
+Build all packages
+colcon build
+Note: Changes to launch files require a rebuild to take effect
+
+Build all packages with symlink install (recommended)
+colcon build --symlink-install
+Note: Changes to launch files take effect without rebuilding
+
+Build a specific package
+e.g. build only turn_on_wheeltec_robot
+colcon build --packages-select turn_on_wheeltec_robot [--symlink-install]
+
+Limit parallel build threads to 2
+colcon build --parallel-workers 2 [--symlink-install]
+
+2. Recursively update modified time for all files in current directory:
+find ./* -exec touch {} \;
+
+3. Run in workspace to install all ROS package dependencies (rosdep is configured in the image):
+rosdep install --from-paths src --ignore-src -r -y
+
+4. Set system time:
+sudo date -s "2022-06-15 09:00:00"
+
+5. pip install using Douban mirror (much faster in China):
+pip install -i https://pypi.doubanio.com/simple/ <package-name>
+
+6. SSH login:
+ssh -Y wheeltec@192.168.0.100
+
+7. Grant executable permissions to all files in a folder:
+sudo chmod -R 777 <folder>
+
+8. Open map directory:
+cd /home/wheeltec/wheeltec_ros2/src/wheeltec_robot_nav2/map
+Manually save map:
+ros2 run nav2_map_server map_saver_cli -f ~/map
+
+View image topics with rqt:
+rqt_image_view
+
+View node and topic relationships:
+rqt_graph
+
+Generate TF tree PDF in current terminal path:
+ros2 run tf2_tools view_frames
+
+VNC adjust resolution:
+xrandr --fb 1024x768
+
