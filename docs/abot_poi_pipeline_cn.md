@@ -1,4 +1,4 @@
-# AgentNav × ABot POI 导航：从输入到输出的完整流程
+# AgentNav × ABot POI 导航：IPO
 
 本文说明当前 `AgentNav/agentnav/abot` 实现如何在 ABot POI Goal 评测中运行。读者无需了解此前的 AgentNav、Nav2 或本项目的修改历史。文中代码片段用于解释关键接口；实验应运行仓库中的原文件。
 
@@ -56,7 +56,7 @@ flowchart TD
 一次评测需要三类外部输入：
 
 1. POI 标注目录：每条 task 的目标名称、起点和参考路径等。默认位置由 `run_abot_poi.sh` 的 `ABOT_ANNOTATION_DIR` 决定。
-2. 场景和评测地图：渲染服务产生相机图像；占据地图由**评测器**检查碰撞，不传给 VLM 或 Agent 的避障器。
+2. 场景和评测地图：渲染服务产生相机图像；占据地图由Evaluator检查碰撞，不传给 VLM 或 Agent 的避障器。
 3. 模型服务：本机 vLLM 提供 `qwen3-vl-4b-instruct`；本地权重提供 Metric3D，当前还启用 UniDepth 近场复核。
 
 启动命令分别在三个终端运行：
@@ -98,7 +98,7 @@ start_images = render(start_pose) # 渲染初始 RGB
 short_memory.add_frame(start_images, start_pose)
 ```
 
-Agent 的 `reset()` 清空上一条任务的高层记忆、主/副深度缓存、当前执行器任务、扫描状态及步数计数。AgentNav 的评测适配器将渲染器设为**单前视相机**，并把当前唯一图像明确放入 `observation.images['front']`，避免把旧帧误认作左、前、右三视角。
+Agent 的 `reset()` 清空上一条任务的高层记忆、主/副深度缓存、当前执行器任务、扫描状态及步数计数。AgentNav 的评测适配器将渲染器设为单前视相机.
 
 随后开始环境步循环。下面是评测器实际顺序的简化表示：
 
@@ -135,7 +135,7 @@ Agent 的主要模式定义在 `types.py`：
 
 `poi_agent.py::predict()` 每次先处理活动任务。它要求 `task_status(observation)` 在该环境步调用一次；若任务仍为 `RUNNING`，直接调用 `executor.step()`，不再请 VLM 决定本步左右转多少。只有局部任务结束或当前没有活动任务时，才调用 `planner.decide()` 进入高层决策。
 
-## 6. VLM 如何看图、提出像素和调用本地工具
+## 6. VLM 看图、提出像素和调用本地工具
 
 `NanobotPoiPlanner._decide()` 将当前 front RGB 保存到工作区；默认给 VLM 的显示图放大两倍。提示要求先判断**指定 POI 是否在当前画面**。如果可见，应在该店入口、较低店面或附近地面提出多个不同候选像素；如果不可见，应请求 `SCAN_360`，不能编造画面外的目标位置。显示图坐标在工具执行前按宽高比例映射回原始传感器的 `720×640` 坐标。
 
