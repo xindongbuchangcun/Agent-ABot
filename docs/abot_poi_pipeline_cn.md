@@ -1,6 +1,6 @@
 # AgentNav × ABot POI 导航：IPO
 
-本文说明当前 `AgentNav/agentnav/abot` 实现如何在 ABot POI Goal 评测中运行。读者无需了解此前的 AgentNav、Nav2 或本项目的修改历史。文中代码片段用于解释关键接口；实验应运行仓库中的原文件。
+本文说明当前 `Agent-ABot/agentnav/abot` 实现如何在 ABot POI Goal 评测中运行。读者无需了解此前的 AgentNav、Nav2 或本项目的修改历史。文中代码片段用于解释关键接口；实验应运行仓库中的原文件。
 
 ## 1. 基础对象
 
@@ -41,6 +41,7 @@ flowchart TD
 | ABot POI 评测器 | [evaluator.py](../../ABot-Navigation/abotn_evaluator/poi_goal/evaluator.py) | 逐步调用 Agent、更新位姿、判定碰撞与成绩 |
 | 单前视评测适配 | [agentnav/abot/evaluator.py](../agentnav/abot/evaluator.py) | 确保只有当前 front RGB，保存视频和架构指标 |
 | Agent 状态机 | [poi_agent.py](../agentnav/abot/poi_agent.py) | 管理规划、执行、验证、扫描和恢复 |
+| POI 技能图 | [skillgraph.py](../agentnav/abot/skillgraph.py) | 定义组合技能、允许的原子动作和模式转移 |
 | VLM 规划器 | [high_level.py](../agentnav/abot/high_level.py) | 构建提示、注册本地工具、选择语义目标 |
 | 像素和深度 Harness | [harness.py](../agentnav/abot/harness.py)、[depth.py](../agentnav/abot/depth.py) | 深度推理、像素测量、地面拟合和走廊检测 |
 | 局部执行器 | [executor.py](../agentnav/abot/executor.py) | 持久任务状态、转向、局部候选和一步动作 |
@@ -61,19 +62,19 @@ flowchart TD
 
 ```bash
 # 终端 1：VLM，默认 GPU 1、端口 8000
-cd /home/lifan/Benchmark/AgentNav
+cd /home/lifan/Benchmark/Agent-ABot
 scripts/start_abot_vllm.sh
 ```
 
 ```bash
 # 终端 2：场景渲染，默认 GPU 0、端口 7036
-cd /home/lifan/Benchmark/AgentNav
+cd /home/lifan/Benchmark/Agent-ABot
 scripts/start_abot_poi_renderer.sh
 ```
 
 ```bash
 # 终端 3：全量评测，深度模型默认使用 GPU 2
-cd /home/lifan/Benchmark/AgentNav
+cd /home/lifan/Benchmark/Agent-ABot
 set -o pipefail
 RUN_DIR="$PWD/outputs/poi_full_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$RUN_DIR"
@@ -149,7 +150,15 @@ Agent 的主要模式定义在 `types.py`：
 
 这些是 `high_level.py` 中 `RuntimeTool` 注册的**进程内工具**。一次工具调用执行本地函数，结果以 JSON 回到同一轮 VLM 对话；VLM 最终必须给出一个终结动作。正常情况下，VLM负责从 `QUERY_DEPTH` 返回的候选中选择 `candidate_id`。工具轮数最多 `40`，像素查询每帧最多 `8`；VLM 请求设有超时和可恢复格式错误重试。
 
-当前 ABot 规划器显式加载 `workspace/skills/navigate`、`locate`、`explore`：普通规划与恢复使用三者，验证阶段使用 `navigate` 和 `locate`，完整扫描后的 JSON 路线评估使用 `locate` 和 `explore`。这些 skill 正文会追加到有效 system prompt；`high_level.py` 的阶段提示词、动态工具定义和 Python 校验仍共同约束决策。原仓库的 `agentnav/skills/*.md` 属于独立的真机/MCP 工作流。当前 ABot 没有注册 `OBSERVE` 工具，VLM 直接观察附带的前视 RGB。
+ABot 的 `skillgraph.py` 根据当前模式和扫描状态选择组合技能，并校验规划的终结动作及执行后的模式：
+
+| 组合技能 | 触发条件 | 加载的 `SKILL.md` | 允许的终结动作 |
+| --- | --- | --- | --- |
+| `find_poi` | 常规 `PLANNING` / `RECOVERY` | `navigate`、`locate`、`explore` | `SET_NAVIGATION_GOAL`、`SCAN_360` |
+| `assess_scan` | 完整扫描后 | `locate`、`explore` | `SET_NAVIGATION_GOAL`、`SET_EXPLORATION_GOAL`、`SEARCH_EXHAUSTED` |
+| `verify_arrival` | `VERIFYING` | `navigate`、`locate` | `TERMINATE`、`RETURN_TO_PLANNING` |
+
+需要强制语义重定位时，`find_poi` 只允许 `SCAN_360`。`high_level.py` 用图选取提示词并检查自身输出；`poi_agent.py` 再检查终结动作和后继模式，并把技能名记入轨迹。Markdown 仍负责视觉判断；深度、碰撞、终止距离和持久运动任务仍由 Harness、Agent 和 Executor 计算。原仓库的 `agentnav/skills/*.md` 属于独立的真机/MCP 工作流。当前 ABot 没有注册 `OBSERVE` 工具，VLM 直接观察附带的前视 RGB。
 
 ## 7. `QUERY_DEPTH` 从像素产生什么
 
@@ -271,7 +280,7 @@ RUN_DIR/
         ├── render_images/*_front.jpg   # 每个环境步的前视画面
         └── agentnav_motion.mp4         # 完整运动与决策回放
 
-AgentNav/outputs/abot_agentnav_logs/run_*/episode_*.jsonl
+Agent-ABot/outputs/abot_agentnav_logs/run_*/episode_*.jsonl
                                      # 每步状态、VLM 工具、候选和运动计划
 ```
 

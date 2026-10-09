@@ -20,8 +20,10 @@ from agentnav.abot.executor import ABotS1Executor, ExecutorConfig, ExecutorSyste
 from agentnav.abot.geometry import world_to_local
 from agentnav.abot.harness import PixelHarness
 from agentnav.abot.high_level import NanobotPoiPlanner
+from agentnav.abot.skillgraph import POI_SKILL_GRAPH
 from agentnav.abot.observation import to_agent_safe_observation
 from agentnav.abot.types import (
+    AgentSafeObservation,
     CameraIntrinsics,
     EpisodeMemory,
     NavMode,
@@ -211,6 +213,7 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
         self.log_dir.mkdir(parents=True, exist_ok=False)
         self.episode_index = -1
         self.runtime = RuntimeState()
+        self.skill_graph = POI_SKILL_GRAPH
         self.reset()
 
     def reset(self) -> None:
@@ -438,6 +441,19 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
             raise ExecutorSystemError(error) from exc
         self.vlm_step_count += 1
         action = decision.terminal["action"]
+        try:
+            active_skill = self.skill_graph.active_meta_skill(safe)
+            atomic_skill = self.skill_graph.validate_terminal(safe, decision.terminal)
+        except ValueError as exc:
+            self.mode = NavMode.SYSTEM_ERROR
+            trace["system_error"] = f"skill_graph_error: {exc}"
+            self._log(trace)
+            raise ExecutorSystemError(str(exc)) from exc
+        trace["skill_graph"] = {
+            "meta_skill": active_skill.name,
+            "atomic_skill": atomic_skill.name,
+            "action": action,
+        }
         terminal_task = decision.terminal.get("task") or {}
         self.memory.vlm_calls.append(
             {
@@ -565,6 +581,7 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
                     self.mode = NavMode.EXECUTING
                     self.transition_reason = "FOCUSED_REACQUIRE"
                     prediction = self._execute_new_turn_task(observation, trace)
+                    self._record_skill_transition(safe, action, trace)
                     self._log(trace)
                     return prediction
                 position = np.asarray(observation.rotation, dtype=np.float64)[:2, 3]
@@ -587,7 +604,13 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
                             ),
                             "required_relocation_m": relocation_m,
                         }
-                        return self._stop_stalled(trace, "recovery_scan_limit_exhausted")
+                        self.skill_graph.validate_transition(
+                            safe, action, NavMode.FAILED
+                        )
+                        trace["skill_graph"]["next_mode"] = NavMode.FAILED.value
+                        return self._stop_stalled(
+                            trace, "recovery_scan_limit_exhausted"
+                        )
                     self.runtime.recovery_scan_cycles += 1
                 self.runtime.last_scan_start_position = position.copy()
                 self.runtime.scan_active = True
@@ -633,6 +656,7 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
                 self.mode = NavMode.RECOVERY
                 self.transition_reason = task.status.value
                 prediction = self._prediction(np.zeros(2), False, trace)
+                self._record_skill_transition(safe, action, trace)
                 self._log(trace)
                 return prediction
             # A reachable target anchor means the visual search succeeded.
@@ -659,8 +683,24 @@ class AgentNavPoiGoalAgent(BasePoiGoalAgent):
             prediction = self._prediction(np.zeros(2), False, trace)
         else:
             raise ExecutorSystemError(f"unsupported high-level action: {action}")
+        self._record_skill_transition(safe, action, trace)
         self._log(trace)
         return prediction
+
+    def _record_skill_transition(
+        self,
+        safe: AgentSafeObservation,
+        action: str,
+        trace: dict[str, Any],
+    ) -> None:
+        try:
+            self.skill_graph.validate_transition(safe, action, self.mode)
+        except ValueError as exc:
+            self.mode = NavMode.SYSTEM_ERROR
+            trace["system_error"] = f"skill_graph_error: {exc}"
+            self._log(trace)
+            raise ExecutorSystemError(str(exc)) from exc
+        trace["skill_graph"]["next_mode"] = self.mode.value
 
     def _execute_new_turn_task(
         self,

@@ -22,6 +22,7 @@ from agentnav.abot.types import (
     PixelMeasurement,
     TaskStatus,
 )
+from agentnav.abot.skillgraph import POI_SKILL_GRAPH
 
 
 @dataclass
@@ -118,6 +119,7 @@ class NanobotPoiPlanner:
         self.context.skills = SkillsLoader(
             self.workspace, builtin_skills_dir=self.workspace / ".no_builtin_skills"
         )
+        self.skill_graph = POI_SKILL_GRAPH
         self.provider = provider or CustomProvider(api_key, api_base, model)
         self.model = model
         self.max_tool_iterations = int(max_tool_iterations)
@@ -186,9 +188,7 @@ class NanobotPoiPlanner:
         messages = self.context.build_messages([], prompt, media=[str(image_path)])
         # Replace the generic assistant identity and bootstrap instructions
         # with the closed navigation contract and only its named skills.
-        skill_names = ["navigate", "locate"]
-        if safe.mode is not NavMode.VERIFYING:
-            skill_names.append("explore")
+        skill_names = self.skill_graph.active_meta_skill(safe).guidance
         skill_guidance = self.context.skills.load_skills_for_context(skill_names)
         messages[0] = {
             "role": "system",
@@ -321,6 +321,7 @@ class NanobotPoiPlanner:
                 "VLM exhausted tool rounds without a terminal action; "
                 f"attempted_tools={attempted}"
             )
+        self.skill_graph.validate_terminal(safe, runtime.terminal)
         return HighLevelDecision(
             runtime.terminal,
             raw_responses,
@@ -337,7 +338,9 @@ class NanobotPoiPlanner:
     ) -> HighLevelDecision:
         """Choose one fresh post-scan route before declaring search exhausted."""
         started = time.perf_counter()
-        guidance = self.context.skills.load_skills_for_context(["locate", "explore"])
+        guidance = self.context.skills.load_skills_for_context(
+            self.skill_graph.active_meta_skill(runtime.safe).guidance
+        )
         messages[0] = {
             "role": "system",
             "content": (
@@ -612,6 +615,7 @@ class NanobotPoiPlanner:
 
         latency = time.perf_counter() - started
         self.total_latency_s += latency
+        self.skill_graph.validate_terminal(runtime.safe, runtime.terminal)
         return HighLevelDecision(
             runtime.terminal,
             raw_responses,

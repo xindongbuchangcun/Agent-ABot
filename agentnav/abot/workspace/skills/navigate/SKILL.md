@@ -4,6 +4,8 @@ description: Choose semantic POI goals and verify local task outcomes in the ABo
 ---
 # Navigate
 
+Skill graph role: `find_poi` uses this skill in `PLANNING` and `RECOVERY`; `verify_arrival` uses it in `VERIFYING`. A reachable current-frame candidate leads to `SET_NAVIGATION_GOAL` and a persistent `EXECUTING` task. A reached local goal leads to `VERIFYING`; a failed task leads to `RECOVERY`.
+
 Use the named POI, the attached **current front RGB**, leak-safe state, and tool results. You choose a semantic goal; Python owns depth estimation, route scoring, short-step motion, collision checks, task status, and turn angles. Never infer target coordinates or success from hidden simulator state.
 
 - In `PLANNING` or `RECOVERY`, first decide whether the named POI is visually grounded in this image. If visible, follow `locate`: query fresh approach pixels and select a `reachable=true` candidate with `SET_NAVIGATION_GOAL`. If absent, follow `explore`.

@@ -4,6 +4,8 @@ description: Ground the named POI and fresh approach pixels in the current front
 ---
 # Locate
 
+Skill graph role: provide fresh visual evidence and candidate pixels to `find_poi`, `assess_scan`, or `verify_arrival`. It does not create a movement task by itself; Python checks depth and reachability before accepting a navigation goal.
+
 Identify the **named** POI from current-image text, logo, storefront, entrance, and their spatial relationship. A readable neighboring sign is not evidence that its storefront is the target. Distinguish a clear mismatch from unreadable or cropped text; uncertainty calls for a better view or a different pixel, not a confident wrong-store claim.
 
 When the POI is visible, propose 2–8 distinct, stable range anchors on its entrance, lower facade, or nearby approach ground. Describe which visible storefront each pixel belongs to. Pixels are range/semantic anchors, not final robot footprints. Use displayed-image coordinates within the tool bounds; Python maps them to the sensor image. Call `QUERY_DEPTH`, compare its estimates, and use `SET_NAVIGATION_GOAL` only with a returned `reachable=true` candidate ID and the named POI as `semantic_anchor`.

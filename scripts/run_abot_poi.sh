@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/home/lifan/Benchmark}"
-AGENTNAV="${ROOT}/AgentNav"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENTNAV="${AGENTNAV:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+ROOT="${ROOT:-$(cd "${AGENTNAV}/.." && pwd)}"
 ABOT="${ROOT}/ABot-Navigation"
 DATA="${ABOT_ANNOTATION_DIR:-${ROOT}/data/ABotN-POIBench/annotations}"
 MAPS="${ABOT_MAP_DIR:-${ROOT}/data/ABotN-POIBench/occmaps}"

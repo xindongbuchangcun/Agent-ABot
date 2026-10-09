@@ -4,6 +4,9 @@ This backend keeps ABot's official simulator, motion conversion, termination,
 collision handling, and SR/SPL/NE evaluation. AgentNav/nanobot provides the
 high-level semantic tool loop. A Metric3D-based Harness validates front-image
 pixels and a persistent S1-style executor performs short local steps.
+`skillgraph.py` routes the `find_poi`, `assess_scan`, and `verify_arrival` meta
+skills to phase-specific Markdown guidance and validates terminal actions and
+mode transitions before the agent accepts them.
 
 Policy-visible input is restricted to POI name, one current front RGB, step,
 mode, and coordinate-free episode memory. Ground-truth target coordinates,

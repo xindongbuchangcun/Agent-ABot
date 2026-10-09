@@ -1,4 +1,4 @@
-workspace: /home/lifan/Benchmark/AgentNav/agentnav/abot/workspace
+workspace: /home/lifan/Benchmark/Agent-ABot/agentnav/abot/workspace
 api_base: http://localhost:8000/v1
 model: qwen3-vl-4b-instruct
 metric3d_source: /home/lifan/Benchmark/models/depth_sources/Metric3D
@@ -8,7 +8,7 @@ depth_device: cuda:0
 enable_secondary_depth_guard: true
 unidepth_source: /home/lifan/Benchmark/models/depth_sources/UniDepth
 unidepth_checkpoint: /home/lifan/Benchmark/models/unidepth-v2-vits14
-log_dir: /home/lifan/Benchmark/AgentNav/outputs/abot_agentnav_logs
+log_dir: /home/lifan/Benchmark/Agent-ABot/outputs/abot_agentnav_logs
 camera_width: 720
 camera_height: 640
 camera_fx: 252.075

@@ -5,6 +5,7 @@ import pytest
 from PIL import Image
 
 from agentnav.abot.depth import DepthPrediction
+from agentnav.abot.executor import ExecutorSystemError
 from agentnav.abot.high_level import HighLevelDecision
 from agentnav.abot.poi_agent import AgentNavPoiGoalAgent
 from agentnav.abot.types import NavMode, PixelMeasurement, PixelProposal, TaskStatus
@@ -38,6 +39,23 @@ class ScanPlanner:
         return HighLevelDecision(
             {"action": "SCAN_360", "reason": "target absent"}, [], [], 0.01, {}
         )
+
+
+def test_skill_graph_rejects_terminal_action_from_wrong_mode(tmp_path):
+    class InvalidPlanner:
+        def decide(self, safe, observation, harness, executor, memory):
+            return HighLevelDecision(
+                {"action": "TERMINATE", "target_visible": True},
+                [], [], 0.01, {},
+            )
+
+    agent = AgentNavPoiGoalAgent(
+        planner=InvalidPlanner(), depth_estimator=FakeDepth(), log_dir=str(tmp_path)
+    )
+    with pytest.raises(ExecutorSystemError, match="invalid for PLANNING"):
+        agent.predict(obs(0))
+    assert agent.mode is NavMode.SYSTEM_ERROR
+    assert agent.executor.active_task is None
 
 
 def obs(step, heading_degrees=0.0):
