@@ -47,7 +47,7 @@ flowchart TD
 | 坐标变换与数据类型 | [geometry.py](../agentnav/abot/geometry.py)、[types.py](../agentnav/abot/types.py) | 像素→局部→世界、状态及测量结构 |
 | 可视化 | [visualize.py](../agentnav/abot/visualize.py) | 根据前视帧和日志生成任务视频 |
 
-未调用 Nav2；未经过 MCP。
+当前执行器采用本地 Python 运动实现，不调用 Nav2；VLM 工具通过本地 function calling 注册表执行，不经过 MCP。
 
 ## 3. 实验的原始输入、服务与配置
 
@@ -55,7 +55,7 @@ flowchart TD
 
 1. POI 标注目录：每条 task 的目标名称、起点和参考路径等。默认位置由 `run_abot_poi.sh` 的 `ABOT_ANNOTATION_DIR` 决定。
 2. 场景和评测地图：渲染服务产生相机图像；占据地图由Evaluator检查碰撞，不传给 VLM 或 Agent 的避障器。
-3. 模型服务：本机 vLLM 提供 `qwen3-vl-4b-instruct`；本地权重提供 Metric3D，当前还启用 UniDepth 近场复核。
+3. 模型服务：本机 vLLM 提供 `qwen3-vl-4b-instruct`；本地权重提供 Metric3D，同时启用 UniDepth 做近场复核。
 
 启动命令由三部分组成：
 
@@ -96,7 +96,7 @@ start_images = render(start_pose) # 渲染初始 RGB
 short_memory.add_frame(start_images, start_pose)
 ```
 
-Agent 的 `reset()` 清空上一条任务的高层记忆、主/副深度缓存、当前执行器任务、扫描状态及步数计数。AgentNav 的评测适配器将渲染器设为单前视相机.
+Agent 的 `reset()` 清空上一条任务的高层记忆、主/副深度缓存、当前执行器任务、扫描状态及步数计数。AgentNav 的评测适配器将渲染器设为单前视相机。
 
 随后开始环境步循环。下面是评测器实际顺序的简化表示：
 
@@ -113,9 +113,9 @@ while cur_step < max_steps:
     check_collision_and_arrival(next_pose, prediction.arrive)
 ```
 
-即使 Agent 返回零位移，例如刚建立导航任务、视觉验证失败或要求重新规划，评测器仍执行一次预测—渲染循环，因此也占一个环境步。
+即使 Agent 返回零位移，例如刚建立导航任务、视觉验证失败或要求重新规划，评测器也会完成一次预测—渲染循环，因此同样占一个环境步。
 
-完整 `PoiGoalObservation` 含有当前 RGB、位姿、POI 名称以及评测器掌握的真实目标距离等字段。不过 `to_agent_safe_observation()` **只把** POI 名称、当前 front RGB、环境步数、模式、简短记忆、转移原因和扫描状态交给 VLM。位姿可供 Python 执行器变换坐标；真实距离用于 Python 的终止门槛；占据地图不参与 Agent 决策。
+`PoiGoalObservation` 包含当前 RGB、位姿、POI 名称以及评测器掌握的真实目标距离等字段。但 `to_agent_safe_observation()`只把 POI 名称、当前 front RGB、环境步数、模式、简短记忆、转移原因和扫描状态交给 VLM。位姿可供 Python 执行器变换坐标；真实距离用于 Python 的终止门槛；占据地图不参与 Agent 决策。
 
 ## 5. 状态机：什么时候调用 VLM，什么时候 Python 运动
 
@@ -185,13 +185,13 @@ local_goal *= (distance - stop_margin_m) / distance
 }
 ```
 
-数字只是结构示例，**不是某条实验轨迹的真实结果**。这里最容易误解的是 `corridor_safe: null`：它表示建目标时还没有沿途安全结论；`reachable: true` 表示此像素深度足以形成非零局部目标。运动中的真实走廊检查在执行器使用**每一步最新深度图**完成。
+数字只是结构示例，不是某条实验轨迹的真实结果。这里最容易误解的是 `corridor_safe: null`：它表示建目标时还没有沿途安全结论；`reachable: true` 表示此像素深度足以形成非零局部目标。运动中的真实走廊检查在执行器使用每一步最新深度图完成。
 
 `SET_NAVIGATION_GOAL` 还会确认候选来自本轮查询、仍然可用，`semantic_anchor` 确实指向任务指定 POI，并拒绝最近阻塞/失败/验证不成立的目标区域。特定高处的纯中文招牌候选可能触发局部文字核对。模糊或无法识别的文字不能自动证明是错店。
 
 ## 8. 从候选像素到持久导航任务
 
-`executor.create_navigation_task()` 取得 `PixelMeasurement.local_goal`，用**当前**相机世界位姿转换成 `goal_world`。它保存该局部任务的目标、初始距离、选中像素、语义锚点和创建步号。距目标估计超过 `4 m` 时标记为中继任务；单段最多朝目标执行 `6 m`，随后必须重新观察。探索目标与已确认 POI 的语义目标分开记录，避免把探索路线的旧世界位置误当作 POI 方位。
+`executor.create_navigation_task()` 取得 `PixelMeasurement.local_goal`，用当前相机世界位姿转换成 `goal_world`。它保存该局部任务的目标、初始距离、选中像素、语义锚点和创建步号。距目标估计超过 `4 m` 时标记为中继任务；单段最多朝目标执行 `6 m`，随后必须重新观察。探索目标与已确认 POI 的语义目标分开记录，避免把探索路线的旧世界位置误当作 POI 方位。
 
 建立导航任务后，Agent 进入 `EXECUTING`。这一步通常向评测器返回零位移，下一环境步开始根据最新画面运动。后续执行器跟踪的是建立任务时的**世界目标**，不是不断拿原 `(u,v)` 在新画面重复测深。任务完成或失败后，高层如果再次选点，必须在新 RGB 上重新定位并提出新像素。
 
@@ -201,7 +201,7 @@ local_goal *= (distance - stop_margin_m) / distance
 
 对每个候选，`depth_corridor_is_safe()` 把深度点反投影到三维，拟合地面，计算点相对地面的高度，并检查候选方向的扫掠走廊。当前有效横向安全半径为 `robot_radius_m + depth_safety_margin_m = 0.20 m`；常规前视距离约 `0.70 m`。缺少足够深度证据或检测到足够多的障碍点时，候选不可走。可选的较远预览最多查看约 `2 m`，用于提前给绕行方向加减分，并不替代逐步短程检查。
 
-当前配置还开启第二深度模型 UniDepth。仅当它在近场候选走廊检测到足够强的障碍证据时，执行器才拒绝该候选或将该步缩短；若副模型出错，本 task 禁用副模型并继续主深度逻辑。最后执行器用**朝目标前进量、障碍风险、转向幅度**评分选择安全短步。若没有安全候选，任务状态变为 `BLOCKED`，交还高层恢复。第二模型并不保证零碰撞：已有验证中一条先前碰撞轨迹不再碰撞，另一条仍碰撞。
+当前配置还开启第二深度模型 UniDepth。仅当它在近场候选走廊检测到足够强的障碍证据时，执行器才拒绝该候选或将该步缩短；若副模型出错，本 task 禁用副模型并继续主深度逻辑。最后执行器用朝目标前进量、障碍风险、转向幅度评分选择安全短步。若没有安全候选，任务状态变为 `BLOCKED`，交还高层恢复。第二模型并不保证零碰撞：已有验证中一条先前碰撞轨迹不再碰撞，另一条仍碰撞。
 
 选中的内部位移为 `[forward, left]`。输出给 ABot 前，执行器按评测接口约定转换 `waypoint`，同时将归一化后的局部运动向量写入 `directions`，使评测器既更新位置也更新朝向：
 
@@ -215,7 +215,7 @@ prediction = WaypointPrediction(
 )
 ```
 
-ABot 的 `get_pred_poses()` 再把这两个数组转换成世界位姿。原地转向则使用**零位移 waypoint**与非零 `directions`；因此转向会改变下一帧视角，也占一个环境步。
+ABot 的 `get_pred_poses()` 再把这两个数组转换成世界位姿。原地转向则使用零位移 waypoint与非零 `directions`；因此转向会改变下一帧视角，也占一个环境步。
 
 ## 10. 各种完成、失败与恢复路径
 
